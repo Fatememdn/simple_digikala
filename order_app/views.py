@@ -1,5 +1,7 @@
 from django.http.response import JsonResponse
+import json
 from order_app.models import Order, Order_item
+from .models import Order, Costumer, Cart, Discount
 
 def order_list_func(request):
     orders = Order.objects.all()
@@ -94,6 +96,42 @@ def order_by_code(request, code_input):
         return JsonResponse(order_dict, safe=False)
     except Order.DoesNotExist:
         return JsonResponse({'error' : 'that order code does not exist'})
+    
+
+
+
+def create_order_view(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        
+        buyer = Costumer.objects.get(name=data['buyer_name'])
+        
+        cart = Cart.objects.get(code=data['cart_code'])
+        
+        discount_code = Discount.objects.get(code=data['discount_code']) if 'discount_code' in data else None
+        
+        order = Order.objects.create(
+            buyer=buyer,
+            cart=cart,
+            discount_code=discount_code,
+            bill=data.get('bill', 0.0),
+            code=data.get('code', None)
+        )
+        
+        return JsonResponse({'message': 'Order created successfully', 'order_code': order.code})
+    
+    return JsonResponse({'error': 'Invalid request method'})
+
+
+def delete_order_view(request, order_code):
+    if request.method == 'DELETE':
+        try:
+            order = Order.objects.get(code=order_code)
+            order.delete()
+            return JsonResponse({'message': 'Order deleted successfully'})
+        except Order.DoesNotExist:
+            return JsonResponse({'error': 'Order not found'})
+    return JsonResponse({'error': 'Invalid request method'})
 
 
 
